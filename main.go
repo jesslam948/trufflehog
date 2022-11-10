@@ -74,8 +74,8 @@ var (
 	filesystemDirectories = filesystemScan.Flag("directory", "Path to directory to scan. You can repeat this flag.").Required().Strings()
 	// TODO: Add more filesystem scan options. Currently only supports scanning a list of directories.
 	// filesystemScanRecursive = filesystemScan.Flag("recursive", "Scan recursively.").Short('r').Bool()
-	// filesystemScanIncludePaths = filesystemScan.Flag("include-paths", "Path to file with newline separated regexes for files to include in scan.").Short('i').String()
-	// filesystemScanExcludePaths = filesystemScan.Flag("exclude-paths", "Path to file with newline separated regexes for files to exclude in scan.").Short('x').String()
+	filesystemScanIncludePaths = filesystemScan.Flag("include-paths", "Path to file with newline separated regexes for files to include in scan.").Short('i').String()
+	filesystemScanExcludePaths = filesystemScan.Flag("exclude-paths", "Path to file with newline separated regexes for files to exclude in scan.").Short('x').String()
 
 	s3Scan         = cli.Command("s3", "Find credentials in S3 buckets.")
 	s3ScanKey      = s3Scan.Flag("key", "S3 key used to authenticate. Can be provided with environment variable AWS_ACCESS_KEY_ID.").Envar("AWS_ACCESS_KEY_ID").String()
@@ -181,6 +181,11 @@ func run(state overseer.State) {
 		logrus.WithError(err).Fatal("could not create filter")
 	}
 
+	filesystemFilter, err := common.FilterFromFiles(*filesystemScanIncludePaths, *filesystemScanExcludePaths)
+	if err != nil {
+		logrus.WithError(err).Fatal("could not create filesystem scan filter")
+	}
+
 	var repoPath string
 	var remote bool
 	switch cmd {
@@ -235,6 +240,7 @@ func run(state overseer.State) {
 	case filesystemScan.FullCommand():
 		fs := func(c *sources.Config) {
 			c.Directories = *filesystemDirectories
+			c.Filter = filesystemFilter
 		}
 
 		if err = e.ScanFileSystem(ctx, sources.NewConfig(fs)); err != nil {

@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/handlers"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/source_metadatapb"
@@ -34,6 +35,7 @@ type Source struct {
 	jobId    int64
 	verify   bool
 	paths    []string
+	filters *common.Filter
 	aCtx     context.Context
 	log      *log.Entry
 	sources.Progress
@@ -103,6 +105,10 @@ func (s *Source) Chunks(ctx context.Context, chunksChan chan *sources.Chunk) err
 			if !fileStat.Mode().IsRegular() {
 				return nil
 			}
+			if !s.filters.Pass(path) {
+				log.WithField("file_path", path).Info("skipping file due to allowlist")
+				return nil
+			}
 
 			inputFile, err := os.Open(path)
 			if err != nil {
@@ -170,4 +176,8 @@ func (s *Source) Chunks(ctx context.Context, chunksChan chan *sources.Chunk) err
 
 	}
 	return nil
+}
+
+func (s *Source) SetFilter(filesystemFilter *common.Filter) {
+	s.filters = filesystemFilter
 }

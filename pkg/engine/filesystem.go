@@ -27,12 +27,17 @@ func (e *Engine) ScanFileSystem(ctx context.Context, c sources.Config) error {
 		return err
 	}
 
+	if c.Filter == nil {
+		c.Filter = common.FilterEmpty()
+	}
+
 	fileSystemSource := filesystem.Source{}
 	err = fileSystemSource.Init(ctx, "trufflehog - filesystem", 0, int64(sourcespb.SourceType_SOURCE_TYPE_FILESYSTEM), true, &conn, runtime.NumCPU())
 	if err != nil {
 		return errors.WrapPrefix(err, "could not init filesystem source", 0)
 	}
 	e.sourcesWg.Add(1)
+	fileSystemSource.SetFilter(c.Filter)
 	go func() {
 		defer common.RecoverWithExit(ctx)
 		defer e.sourcesWg.Done()
